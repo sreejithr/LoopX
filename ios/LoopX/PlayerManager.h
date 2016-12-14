@@ -6,8 +6,8 @@
 //  Copyright © 2016 Facebook. All rights reserved.
 //
 
-#import "RCTBridgeModule.h"
-
-@interface PlayerManager : NSObject <RCTBridgeModule>
-
-@end
+//#import "RCTBridgeModule.h"
+//
+//@interface PlayerManager : NSObject <RCTBridgeModule>
+//
+//@end

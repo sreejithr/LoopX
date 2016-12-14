@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Orientation from 'react-native-orientation';
 import { PlayerManager } from 'NativeModules';
+import Video from 'react-native-video';
 
 export default class VideoPlayer extends Component {
   static propTypes = {
@@ -28,6 +29,15 @@ export default class VideoPlayer extends Component {
 
   componentDidMount() {
     Orientation.lockToLandscape();
+
+    fetch("http://nonstopp.in:5000/g2QJ3IlJLi0").then(resp => {
+      if (resp.status === 200) {
+        resp.text().then(data => {
+          var json = JSON.parse(data);
+          console.log(json);
+        });
+      }
+    });
   }
 
   validateURL(url) {
@@ -71,8 +81,19 @@ export default class VideoPlayer extends Component {
     return (
       <View>
         <Text>Hello world g2QJ3IlJLi0</Text>
-        <WebView source={require('../assets/index.html')}
-         style={{width: 500}} />
+        <Video source={{uri: this.state.videoURL}}
+         rate={1.0}                   // 0 is paused, 1 is normal.
+         volume={1.0}                 // 0 is muted, 1 is normal.
+         muted={false}                // Mutes the audio entirely.
+         paused={false}               // Pauses playback entirely.
+         
+         repeat={true}                // Repeat forever.
+         onLoadStart={this.loadStart} // Callback when video starts to load
+         onLoad={this.setDuration}    // Callback when video loads
+         onProgress={this.setTime}    // Callback every ~250ms with currentTime
+         onEnd={this.onEnd}           // Callback when playback finishes
+         onError={this.videoError}    // Callback when video cannot be loaded
+      />
       </View>
     );
   }
