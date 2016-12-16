@@ -8,14 +8,44 @@ import {
   Text,
   PanResponder,
   StyleSheet,
-  Animated
+  Animated,
+  Easing
 } from 'react-native';
 import { SCREEN_WIDTH, SCREEN_HEIGHT } from '../constants';
 
 let HANDLE_WIDTH = 40;
 let HANDLE_HEIGHT = 30;
+let START_HEIGHT = 50;
+let END_HEIGHT = 90;
 
 class Handler extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      released: false,
+      animatedHeight: null,
+      defaultHeight: null
+    };
+  }
+
+  animateHandleRelease() {
+    var self = this;
+    this.setState({
+      released: true,
+      animatedHeight: new Animated.Value(this.props.height)
+    }, () => {
+      if (!self.state.defaultHeight) {
+        return;
+      }
+
+      Animated.timing(self.state.animatedHeight, {
+        toValue: self.state.defaultHeight,
+        duration: 200,
+        easing: Easing.out(Easing.cubic)
+      }).start(() => self.setState({released: false}));
+    });
+  }
+
   componentWillMount() {
     var self = this;
     this._panResponder = PanResponder.create({
@@ -25,6 +55,7 @@ class Handler extends Component {
       onMoveShouldSetPanResponderCapture: (evt, gestureState) => true,
 
       onPanResponderGrant: (evt, gestureState) => {
+        self.setState({defaultHeight: self.props.height});
         self.props.onGestureStart && self.props.onGestureStart(evt, gestureState);
       },
       onPanResponderMove: (evt, gestureState) => {
@@ -32,6 +63,7 @@ class Handler extends Component {
       },
       onPanResponderTerminationRequest: (evt, gestureState) => true,
       onPanResponderRelease: (evt, gestureState) => {
+        self.animateHandleRelease();
         self.props.onGestureEnd && self.props.onGestureEnd(evt, gestureState);
       },
       onPanResponderTerminate: (evt, gestureState) => {
@@ -48,13 +80,18 @@ class Handler extends Component {
   }
 
   render() {
-    var height = this.props.height || 20;
-    height = height < 20 ? 20 : height;
+    var height;
+    if (this.state.released) {
+      height = this.state.animatedHeight;
+    } else {
+      height = this.props.height || 20;
+      height = height < 20 ? 20 : height;
+    }
 
     return (
       <View style={styles.handleContainer}>
         <View style={styles.handle} {...this._panResponder.panHandlers}></View>
-        <View style={[styles.handleStem, {height}]}></View>
+        <Animated.View style={[styles.handleStem, {height}]}></Animated.View>
       </View>
     )
   }
@@ -93,6 +130,10 @@ export class Seeker extends Component {
     return dx;
   }
 
+  limitToRangeY(y) {
+    return y;
+  }
+
   onStartMove(e, gestureState) {
     var startPos = this.limitToRangeX(gestureState.moveX - HANDLE_WIDTH/2);
     if (this.state.activeControl === CONTROLS.START) {
@@ -116,33 +157,49 @@ export class Seeker extends Component {
   }
 
   onGestureStart(e, gestureState, activeControl) {
-    console.log("bro")
     this.setState({
       verticalPos: SCREEN_HEIGHT - gestureState.y0,
       activeControl
     });
   }
 
+  animateStartHandleDismiss(onFinish) {
+    Animated.timing(this.state.verticalPos, {
+      toValue: START_HEIGHT
+    }).start(onFinish);
+  }
+
+  animateEndHandleDismiss(onFinish) {
+    Animated.timing(this.state.verticalPos, {
+      toValue: END_HEIGHT
+    }).start(onFinish);
+  }
+
+  animateHandleDismiss(onFinish) {
+    if (this.state.activeControl === CONTROLS.START) {
+      this.animateStartHandleDismiss(onFinish);
+    } else if (this.state.activeControl === CONTROLS.END) {
+      this.animateEndHandleDismiss(onFinish);
+    }
+  }
+
   onGestureEnd(e, gestureState, activeControl) {
-    this.setState({
-      activeControl: CONTROLS.NONE
-    });
+    this.setState({activeControl: CONTROLS.NONE});
   }
 
   render() {
     // var zoomLevel = this.state.zoomLevel.interpolate({
-      
     // });
-    var startHeight = 50, endHeight = 90;
-    console.log(">>> " + this.state.verticalPos);
+    var startHeight = START_HEIGHT, endHeight = END_HEIGHT;
     if (this.state.verticalPos) {
       if (this.state.activeControl === CONTROLS.START) {
-        startHeight = this.state.verticalPos;
+        startHeight = this.state.verticalPos < startHeight ? startHeight : this.state.verticalPos;
       } else if (this.state.activeControl === CONTROLS.END) {
-        endHeight = this.state.verticalPos;
+        endHeight = this.state.verticalPos < endHeight ? endHeight : this.state.verticalPos;
       }
     }
     var maxHeight = startHeight > endHeight ? startHeight : endHeight;
+    var AnimatedHandle = Animated.createAnimatedComponent(Handler);
 
     return (
       <View style={styles.container} onLayout={this.onLayout.bind(this)}>
@@ -176,7 +233,7 @@ export class Seeker extends Component {
 
 var styles = StyleSheet.create({
   container: {
-    backgroundColor: 'blue'
+
   },
   timeline: {
     backgroundColor: 'red',
